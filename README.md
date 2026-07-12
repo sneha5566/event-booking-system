@@ -3,6 +3,11 @@
 A production-ready Event Booking System built with Spring Boot that allows users to browse events, book seats, manage bookings, and enables organizers/admins to manage venues, shows, and events securely.
 
 ---
+# 🏗️ System Architecture
+
+The following diagram provides an overview of the Event Booking System architecture, database relationships, booking workflow, and JWT authentication flow.
+
+![Event Booking System Architecture](images/architecture.png)
 
 ## 🚀 Features
 
@@ -19,57 +24,72 @@ A production-ready Event Booking System built with Spring Boot that allows users
 - List Events
 - Filter Active Events
 
+# 🎟️ Event Booking System
+
+![Java](https://img.shields.io/badge/Java-21-orange)
+![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.5-green)
+![MySQL](https://img.shields.io/badge/MySQL-Database-blue)
+![JWT](https://img.shields.io/badge/JWT-Authentication-red)
+![Swagger](https://img.shields.io/badge/Swagger-OpenAPI-brightgreen)
+![Maven](https://img.shields.io/badge/Maven-Build-blueviolet)
+
+A production-ready **Event Booking System** built using **Spring Boot**, **Spring Security**, **JWT Authentication**, **Hibernate**, **MySQL**, and **Swagger**.
+
+---
+
+## 🚀 Features
+
+### Authentication
+- User Registration
+- Secure Login
+- JWT Authentication
+- Role-Based Authorization
+
+### Event Management
+- Create Event
+- Update Event
+- Delete Event
+- List Events
+
 ### Venue Management
 - Create Venue
 - Update Venue
 - Delete Venue
-- View Venues
 
 ### Show Management
-- Schedule Shows
-- Prevent Overlapping Shows
-- Dynamic Seat Pricing
-- Show Status Management
+- Create Shows
+- Dynamic Pricing
+- Overlap Validation
 
-### Booking System
-- Book Seats
-- Seat Locking
-- Optimistic Locking to Prevent Double Booking
+### Booking
+- Seat Booking
 - Booking History
 - Booking Cancellation
+- Double Booking Prevention
 
-### Payment
-- Payment Processing Flow
-- Payment Status Tracking
-- Booking Confirmation
-
-### Scheduler
-- Automatic Cancellation of Expired Bookings
-
-### Dashboard APIs
+### Dashboard
 - Admin Dashboard
 - Organizer Dashboard
 - Booking Statistics
 - Revenue Statistics
 
-### API Documentation
-- Swagger / OpenAPI Integration
+### Scheduler
+- Automatic Expired Booking Cleanup
 
 ---
 
-# 🛠 Tech Stack
+## 🛠 Tech Stack
 
-- Java 21
-- Spring Boot 3
-- Spring Security
-- JWT
-- Spring Data JPA
-- Hibernate
-- MySQL
-- Maven
-- Lombok
-- Swagger (OpenAPI)
-- Postman
+| Category | Technology |
+|-----------|------------|
+| Language | Java 21 |
+| Framework | Spring Boot |
+| Security | Spring Security + JWT |
+| Database | MySQL |
+| ORM | Hibernate |
+| Documentation | Swagger |
+| Build Tool | Maven |
+| API Testing | Postman |
 
 ---
 
