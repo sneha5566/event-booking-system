@@ -1,0 +1,6 @@
+target/*.jar.original
+.git
+.idea
+.vscode
+*.iml
+.DS_Store
