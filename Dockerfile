@@ -1,8 +1,19 @@
-FROM eclipse-temurin:21-jdk
+# ---------- Build Stage ----------
+FROM eclipse-temurin:25-jdk AS builder
 
 WORKDIR /app
 
-COPY target/event-booking-system-0.0.1-SNAPSHOT.jar app.jar
+COPY . .
+
+RUN chmod +x mvnw
+RUN ./mvnw clean package -DskipTests
+
+# ---------- Run Stage ----------
+FROM eclipse-temurin:25-jdk
+
+WORKDIR /app
+
+COPY --from=builder /app/target/*.jar app.jar
 
 EXPOSE 8080
 
