@@ -68,6 +68,16 @@ public class ShowController {
             @ApiResponse(responseCode = "200", description = "Show found"),
             @ApiResponse(responseCode = "404", description = "Show not found")
     })
+    @Operation(
+            summary = "Get Seats of a Show",
+            description = "Seat map for a show, with the showSeat id, price and status (AVAILABLE / LOCKED / BOOKED)."
+    )
+    @GetMapping("/{id}/seats")
+    public java.util.List<com.sneha.moviebooking.dto.ShowSeatResponse> getShowSeats(
+            @PathVariable Long id) {
+        return showService.getShowSeats(id);
+    }
+
     @GetMapping("/{id}")
     public ShowResponse getShowById(
             @PathVariable Long id) {

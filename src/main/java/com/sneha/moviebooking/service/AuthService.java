@@ -25,7 +25,8 @@ public class AuthService {
     public String signup(SignupRequest request) {
 
         if (userRepository.existsByEmail(request.getEmail())) {
-            return "Email already registered";
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.CONFLICT, "Email already registered");
         }
 
         User user = new User();
@@ -60,6 +61,7 @@ public class AuthService {
                         .build()
         );
 
-        return new AuthenticationResponse(jwt);
+        return new AuthenticationResponse(
+                jwt, user.getId(), user.getName(), user.getEmail(), user.getRole().name());
     }
 }

@@ -40,7 +40,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String jwt = authHeader.substring(7);
 
-        String username = jwtService.extractUsername(jwt);
+        String username;
+        try {
+            username = jwtService.extractUsername(jwt);
+        } catch (io.jsonwebtoken.JwtException | IllegalArgumentException e) {
+            // expired or tampered token -> continue as anonymous (results in 401 on protected APIs)
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         if (username != null &&
                 SecurityContextHolder.getContext().getAuthentication() == null) {

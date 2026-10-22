@@ -119,6 +119,7 @@ public class ShowService {
         showSeatRepository.saveAll(showSeats);
         return ShowMapper.toResponse(savedShow);
     }
+    @Transactional(readOnly = true)
     public List<ShowResponse> getAllShows() {
 
         return showRepository.findByStatus(ShowStatus.ACTIVE)
@@ -126,6 +127,7 @@ public class ShowService {
                 .map(ShowMapper::toResponse)
                 .toList();
     }
+    @Transactional(readOnly = true)
     public Page<ShowResponse> getAllShows(Pageable pageable) {
 
         return showRepository
@@ -133,6 +135,7 @@ public class ShowService {
                 .map(ShowMapper::toResponse);
     }
 
+    @Transactional(readOnly = true)
     public ShowResponse getShowById(Long id) {
 
         Show show = showRepository.findById(id)
@@ -143,6 +146,7 @@ public class ShowService {
 
         return ShowMapper.toResponse(show);
     }
+    @Transactional(readOnly = true)
     public Page<ShowResponse> filterShows(
             ShowStatus status,
             Long eventId,
@@ -163,5 +167,28 @@ public class ShowService {
 
         return showRepository.findAll(specification, pageable)
                 .map(ShowMapper::toResponse);
+    }
+
+    @Transactional(readOnly = true)
+    public List<com.sneha.moviebooking.dto.ShowSeatResponse> getShowSeats(Long showId) {
+        Show show = showRepository.findById(showId)
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Show not found"));
+        return showSeatRepository.findByShow(show)
+                .stream()
+                .map(ss -> com.sneha.moviebooking.dto.ShowSeatResponse.builder()
+                        .id(ss.getId())
+                        .rowName(ss.getSeat().getRowName())
+                        .seatNumber(ss.getSeat().getSeatNumber())
+                        .seatType(ss.getSeat().getSeatType())
+                        .price(ss.getPrice())
+                        .status(ss.getStatus())
+                        .build())
+                .sorted(java.util.Comparator
+                        .comparing(com.sneha.moviebooking.dto.ShowSeatResponse::getRowName)
+                        .thenComparing(com.sneha.moviebooking.dto.ShowSeatResponse::getSeatNumber))
+                .toList();
     }
 }
