@@ -61,14 +61,6 @@ public class ShowController {
     }
 
     @Operation(
-            summary = "Get Show by ID",
-            description = "Retrieve a show using its unique ID."
-    )
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Show found"),
-            @ApiResponse(responseCode = "404", description = "Show not found")
-    })
-    @Operation(
             summary = "Get Seats of a Show",
             description = "Seat map for a show, with the showSeat id, price and status (AVAILABLE / LOCKED / BOOKED)."
     )
@@ -78,6 +70,14 @@ public class ShowController {
         return showService.getShowSeats(id);
     }
 
+    @Operation(
+            summary = "Get Show by ID",
+            description = "Retrieve a show using its unique ID."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Show found"),
+            @ApiResponse(responseCode = "404", description = "Show not found")
+    })
     @GetMapping("/{id}")
     public ShowResponse getShowById(
             @PathVariable Long id) {
