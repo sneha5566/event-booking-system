@@ -33,6 +33,22 @@ Simple React (Vite) frontend for the Event Booking System backend.
 
 **First-time demo flow:** log in as admin → Manage → create an Event → create a Venue → "Seat layout" on the venue → Shows tab → create a show → sign up as a normal user in another browser → book seats.
 
+## Demo data
+
+On first start the backend fills an empty database with 6 movies (Harry Potter, Lord of the Rings, Marvel),
+5 well-known cinemas (Prasads, AMB, PVR ICON, Sathyam, Raj Mandir), 60 shows over the next 4 days and a few bookings.
+
+Demo logins (password `Demo@1234`, change it with the `DEMO_PASSWORD` env var):
+
+| Name | Email | Role |
+|------|-------|------|
+| Aarav Sharma | aarav.sharma@demo.eventbook.in | USER |
+| Priya Reddy | priya.reddy@demo.eventbook.in | USER |
+| Rohan Verma | rohan.verma@demo.eventbook.in | USER |
+| Cineverse Entertainment | organizer@demo.eventbook.in | ORGANIZER |
+
+Set `DEMO_DATA_ENABLED=false` to turn this off.
+
 ## Settings
 
 - `VITE_API_URL` – backend URL (default `http://localhost:8080`). Copy `.env.example` to `.env` to change it.
