@@ -1,25 +1,25 @@
-version: '3.8'
+# Runs the whole project locally with one command:
+#   docker compose up --build
+# Backend:  http://localhost:8080/swagger-ui/index.html
+# Database: PostgreSQL on localhost:5433 (user/password: postgres/postgres)
 
 services:
 
-  mysql:
-    image: mysql:8.4
-    container_name: event-booking-mysql
+  db:
+    image: postgres:16
+    container_name: event-booking-db
     restart: unless-stopped
-
     environment:
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-
+      POSTGRES_DB: eventdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     ports:
-      - "3307:3306"
-
+      - "5433:5432"
     volumes:
-      - mysql-data:/var/lib/mysql
-
+      - pg-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U postgres -d eventdb"]
+      interval: 5s
       timeout: 5s
       retries: 10
 
@@ -28,20 +28,17 @@ services:
       context: .
     container_name: event-booking-app
     restart: unless-stopped
-
     ports:
       - "8080:8080"
-
     depends_on:
-      mysql:
+      db:
         condition: service_healthy
-
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}
-      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
-      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_EXPIRATION: ${JWT_EXPIRATION}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/eventdb
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@eventbook.local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Admin@1234}
 
 volumes:
-  mysql-data:
+  pg-data:

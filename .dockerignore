@@ -3,4 +3,7 @@ target/*.jar.original
 .idea
 .vscode
 *.iml
-.DS_Store
+.DS_Storefrontend
+scripts
+docs
+images
