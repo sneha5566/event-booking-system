@@ -31,13 +31,14 @@ Organizers create events, venues and shows; admins manage users and see analytic
 5. [Architecture](#5-architecture)
 6. [Database design](#6-database-design)
 7. [How a booking works](#7-how-a-booking-works)
-8. [Security](#8-security)
-9. [Project structure](#9-project-structure)
-10. [Run it on your computer](#10-run-it-on-your-computer)
-11. [Testing](#11-testing)
-12. [Deployment](#12-deployment)
-13. [Work log – what was built and fixed](#13-work-log--what-was-built-and-fixed)
-14. [Limitations and future work](#14-limitations-and-future-work)
+8. [Seat locking – no double booking](#8-seat-locking--no-double-booking)
+9. [Security](#9-security)
+10. [Project structure](#10-project-structure)
+11. [Run it on your computer](#11-run-it-on-your-computer)
+12. [Testing](#12-testing)
+13. [Deployment](#13-deployment)
+14. [Work log – what was built and fixed](#14-work-log--what-was-built-and-fixed)
+15. [Limitations and future work](#15-limitations-and-future-work)
 
 ---
 
@@ -99,7 +100,7 @@ You can also **sign up** with any email – new accounts get the USER role.
 - Manage users and **change roles** (USER ↔ ORGANIZER ↔ ADMIN)
 
 ### Behind the scenes
-- **Double-booking prevention** – seat status checks + optimistic locking (`@Version`) on each show seat
+- **Double-booking prevention** – seat locking with transactions + optimistic locking (`@Version`), proven by a live race test ([details](#8-seat-locking--no-double-booking))
 - **Scheduler** cancels unpaid bookings after 5 minutes and frees the seats
 - Soft delete for events and venues (history is kept)
 - Consistent error responses with correct HTTP status codes
@@ -296,7 +297,80 @@ stateDiagram-v2
 
 ---
 
-## 8. Security
+## 8. Seat locking – no double booking
+
+**The problem:** a popular show opens, and two (or a hundred) people click the *same seat* at the same moment.
+Without protection, both could pay for seat H8 and arrive at the cinema with the same ticket.
+
+**How EventBook prevents it – three layers of protection:**
+
+| Layer | What it does | Where in the code |
+|---|---|---|
+| 1. Status check inside a transaction | Each seat of a show has a status: `AVAILABLE`, `LOCKED` or `BOOKED`. Booking checks that every chosen seat is still `AVAILABLE`, then marks it `LOCKED` – all inside one database **transaction** (all-or-nothing: if any step fails, nothing is saved). | `BookingService.createBooking` (class is `@Transactional`) |
+| 2. Optimistic locking with `@Version` | For requests that arrive at the *exact same instant*, both might read "AVAILABLE". Each seat row therefore has a `version` number. Hibernate saves with `UPDATE … WHERE id = ? AND version = ?` and increases the version. The first save wins; the second finds the version changed, updates 0 rows and is rolled back with **409 Conflict** – "Someone else just booked one of these seats". | `ShowSeat.version` (`@Version`), `GlobalExceptionHandler` |
+| 3. Temporary hold + automatic release | A `LOCKED` seat is held for **5 minutes** while the user pays. Payment success → `BOOKED`. Payment failure, cancellation, or no payment within 5 minutes → back to `AVAILABLE`, so seats are never stuck. | `PaymentService`, `BookingTimeoutScheduler` (runs every minute) |
+
+Why *optimistic* locking? It does not block anyone while they look at the seat map – it only checks for a clash
+at the moment of saving. Clashes are rare, so this is faster than making every user wait for a database lock.
+
+```mermaid
+sequenceDiagram
+    actor A as Aarav
+    actor P as Priya
+    participant B as Backend
+    participant D as Database (seat H8, version 3)
+
+    par both click "Book" on H8 at the same moment
+        A->>B: POST /api/bookings (H8)
+    and
+        P->>B: POST /api/bookings (H8)
+    end
+    B->>D: Aarav: H8 AVAILABLE? yes → UPDATE … SET LOCKED, version=4 WHERE version=3
+    D-->>B: 1 row updated ✔
+    B-->>A: 201 Booking PENDING – pay within 5 min
+    B->>D: Priya: H8 AVAILABLE? → already LOCKED (or: WHERE version=3 → 0 rows)
+    D-->>B: rejected ✘ – transaction rolled back
+    B-->>P: 400 "seat no longer available" / 409 "someone else just booked it"
+```
+
+```mermaid
+stateDiagram-v2
+    [*] --> AVAILABLE: show created
+    AVAILABLE --> LOCKED: booking created (only one request can win)
+    LOCKED --> BOOKED: payment success
+    LOCKED --> AVAILABLE: payment failed / not paid in 5 min / cancelled
+    BOOKED --> AVAILABLE: confirmed booking cancelled (refund)
+```
+
+### Proof – race test on the live server
+
+`scripts/concurrency-test.mjs` logs in 3 users and makes them request the **same seat at the same time**
+(parallel requests), for 5 different seats. Result against the live deployment:
+
+```
+Show #63: Spider-Man: No Way Home @ Raj Mandir Cinema
+3 users will race for each of 5 seats
+
+✅ Seat H8: 1 booked, 2 rejected
+     booked by   aarav.sharma
+     rejected    priya.reddy → 400 One or more seats are no longer available.
+     rejected    rohan.verma → 400 One or more seats are no longer available.
+✅ Seat H9:  1 booked, 2 rejected
+✅ Seat H10: 1 booked, 2 rejected
+✅ Seat H11: 1 booked, 2 rejected
+✅ Seat H12: 1 booked, 2 rejected
+
+Seats now LOCKED: 5/5 (released automatically after 5 minutes if unpaid)
+Result: 5/5 seats had exactly one winner
+```
+
+Every seat was given to exactly **one** user. In this run the competing requests were stopped by layer 1
+(the winner had already locked the seat); layer 2 (`@Version` → 409) is the safety net for requests that hit
+the database in the very same instant. Run it yourself: `node scripts/concurrency-test.mjs`
+
+---
+
+## 9. Security
 
 1. **Sign up** – password is hashed with **BCrypt** before saving (never stored as plain text).
 2. **Log in** – `POST /auth/login` checks the password and returns a **JWT** (a signed token, valid 24 h) plus the user's role.
@@ -308,7 +382,7 @@ stateDiagram-v2
 
 ---
 
-## 9. Project structure
+## 10. Project structure
 
 ```
 event-booking-system/
@@ -333,6 +407,7 @@ event-booking-system/
 │       ├── components/ui.jsx reusable pieces (data loading, badges, role guard)
 │       └── pages/            Events, EventDetail, SeatSelect, Payment, MyBookings, Manage, Admin, Login, Signup
 ├── scripts/api-smoke-test.mjs   end-to-end test of every API
+├── scripts/concurrency-test.mjs race test: many users, same seat, same moment
 ├── docs/API.md                  endpoint reference
 ├── docs/screenshots/            images used in this README
 ├── Dockerfile                   multi-stage build (Maven → JDK image)
@@ -341,7 +416,7 @@ event-booking-system/
 
 ---
 
-## 10. Run it on your computer
+## 11. Run it on your computer
 
 ### Option A – Docker (easiest: one command)
 
@@ -390,7 +465,7 @@ npm run dev          # opens on http://localhost:5173 and talks to http://localh
 
 ---
 
-## 11. Testing
+## 12. Testing
 
 `scripts/api-smoke-test.mjs` is an **end-to-end test** that walks through the whole system against a running backend:
 sign-up → roles → events → venues → seat layout → shows (incl. overlap rule) → booking (incl. double-booking) →
@@ -401,12 +476,12 @@ ADMIN_EMAIL=admin@eventbook.local ADMIN_PASSWORD=Admin@1234 node scripts/api-smo
 # add API_URL=https://… to test another server
 ```
 
-It prints ✅ / ❌ for every check. Against the live deployment **all 65 checks passed**, covering every one of the 33 endpoints,
+It prints ✅ / ❌ for every check. A separate race test for seat locking, `scripts/concurrency-test.mjs`, is described in [section 8](#8-seat-locking--no-double-booking). Against the live deployment **all 65 checks passed**, covering every one of the 33 endpoints,
 including error cases (401 without token, 403 for wrong role, 404 for missing items, 409 for duplicate email).
 
 ---
 
-## 12. Deployment
+## 13. Deployment
 
 ```mermaid
 flowchart LR
@@ -426,7 +501,7 @@ Every push to `main` automatically redeploys both parts.
 
 ---
 
-## 13. Work log – what was built and fixed
+## 14. Work log – what was built and fixed
 
 **Phase 1 – Backend.** Spring Boot REST API with JWT security, three roles, events, venues, seat layouts,
 shows with tiered pricing and overlap checks, bookings with seat locking, mock payments, refunds,
@@ -450,7 +525,7 @@ Then the **React frontend** was built (all three roles), **demo data** was added
 
 ---
 
-## 14. Limitations and future work
+## 15. Limitations and future work
 
 - Payments are simulated – a real gateway (e.g. Razorpay test mode) could be plugged into `MockPaymentGatewayService`.
 - No e-mail / SMS ticket confirmation yet.
